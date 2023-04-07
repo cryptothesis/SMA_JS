@@ -1,0 +1,76 @@
+function render(token,days) {
+  document.getElementById("loading").innerHTML="Loading..."
+
+  var url = "https://accounts.hive-engine.com/marketHistory?symbol=" + token;
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", url);
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState === 4) {
+      console.log(xhr.status);
+      console.log(xhr.responseText);
+      data = JSON.parse(xhr.responseText);
+
+      var count = Object.keys(data).length;
+      console.log(count);
+
+      var closeP = []; 
+      var xValues = [];
+      var timestamp = [];
+
+      for (let i = 0; i < count; i++) {
+        closeP[i] = Number(data[i].closePrice);
+        xValues[i] = i;
+        timestamp[i] = new Date(Number(data[i].timestamp)).toLocaleDateString('en-US');
+        console.log(closeP[i]);
+      }
+
+      closeP=closeP.reverse()
+      timestamp= timestamp.reverse()
+
+      SMA = simpleMovingAverage(closeP, window = days)
+
+      addon = closeP.slice(0,(days - 1))
+      SMA = addon.concat(SMA) 
+
+      console.log("SMA")
+      console.log(SMA)
+
+      new Chart("myChart", {
+        type: "line",
+        data: {
+          labels: timestamp,
+          datasets: [{ 
+            data: closeP,
+            borderColor: "black",
+            borderWidth: 2,
+            pointRadius: 0.01,
+            fill: false
+          }, 
+          { 
+            data: SMA,
+            borderColor: "red",
+            borderWidth: 1,
+            pointRadius: 0.01,
+            fill: false
+          }]
+        },
+        options: {
+          scales: {
+            xAxes: [{
+              type: 'time',
+              time: {
+                displayFormats: {
+                  day: 'MMM DD, YYYY'
+                }
+              }
+            }]
+          },
+          legend: {display: false}
+        }
+      });
+
+    }
+  };
+  xhr.send();
+  document.getElementById("loading").innerHTML=""
+}
