@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+
+  <head>
+    <link
+      href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: #f0f2f5;
+        color: #333;
+        margin: 0;
+        padding: 0;
+      }
+      h1 {
+        background-color: #424242;
+        color: #fff;
+        padding: 20px;
+        margin: 0;
+      }
+      a {
+        color: #3498db;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      form {
+        background-color: #fff;
+        padding: 20px;
+        margin: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+      }
+      input[type="text"] {
+        padding: 5px;
+        margin: 10px 0;
+      }
+      input[type="button"] {
+        background-color: #3498db;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        padding: 10px 20px;
+        cursor: pointer;
+      }
+      input[type="button"]:hover {
+        background-color: #2980b9;
+      }
+      canvas {
+        margin: 20px;
+        background-color: #fff;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>SMA Charting Tool (Priced in Hive)</h1>
+    <a href="https://peakd.com/@cryptothesis/">@cryptothesis on HIve</a>
+    <p id="Title2">Version 3: Cleaned up date display</p>
+    <p id="Title3">
+      Work in progress. DO NOT USE THIS INFO FOR INVESTMENT DECISIONS!
+    </p>
+    <p>Disclaimer: The data and information generated may not be accurate.</p>
+    <form id="update" action="/action_page.php">
+      Token (e.g., LEO, SPS, DEC, CHAOS, SWAP.BTC, BEE, CTP, or any HIVE-ENGINE
+      tokens): <input type="text" id="token" value="LEO" /><br /><br />
+      SMA Days Setting: <input type="text" id="days" value="20" /><br /><br />
+      <input type="button" onclick="update()" value="Generate SMA" />
+    </form>
+
+    <p id="loading"></p>
+    <canvas id="myChart" style="width: 100%; max-width: 1600px"></canvas>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+    <script>
+      // https://blog.oliverjumpertz.dev/the-moving-average-simple-and-exponential-theory-math-and-implementation-in-javascript
+
+      function simpleMovingAverage(prices, window) {
+        if (!prices || prices.length < window) {
+          return [];
+        }
+
+        let index = window - 1;
+        const length = prices.length + 1;
+
+        const simpleMovingAverages = [];
+
+        while (++index < length) {
+          const windowSlice = prices.slice(index - window, index);
+          const sum = windowSlice.reduce((prev, curr) => prev + curr, 0);
+          simpleMovingAverages.push(sum / window);
+        }
+
+        return simpleMovingAverages;
+      }
+
+      function render(token, days) {
+        document.getElementById("loading").innerHTML = "Loading...";
+
+        var url =
+          "https://accounts.hive-engine.com/marketHistory?symbol=" + token;
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", url);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            console.log(xhr.status);
+            console.log(xhr.responseText);
+            data = JSON.parse(xhr.responseText);
+
+            var count = Object.keys(data).length;
+            console.log(count);
+
+            var closeP = [];
+            var xValues = [];
+            var timestamp = [];
+
+            for (let i = 0; i < count; i++) {
+              closeP[i] = Number(data[i].closePrice);
+              xValues[i] = i;
+              timestamp[i] = new Date(Number(data[i].timestamp) * 1000); // Multiply by 1000
+              console.log(closeP[i]);
+            }
+
+            closeP = closeP.reverse();
+
+            timestamp = timestamp.reverse();
+
+            //closeP = closeP.shift(5)
+
+            //xValues = xValues.shift(5)
+
+            SMA = simpleMovingAverage(closeP, (window = days));
+
+            addon = closeP.slice(0, days - 1);
+
+            SMA = addon.concat(SMA);
+
+            console.log("SMA");
+
+            console.log(SMA);
+
+            new Chart("myChart", {
+              type: "line",
+              data: {
+                labels: timestamp,
+                datasets: [
+                  {
+                    data: closeP,
+                    borderColor: "black",
+                    borderWidth: 2,
+                    pointRadius: 0.01,
+                    fill: false,
+                  },
+                  {
+                    data: SMA,
+                    borderColor: "red",
+                    borderWidth: 1,
+                    pointRadius: 0.01,
+                    fill: false,
+                  },
+                ],
+              },
+              options: {
+                legend: { display: false },
+                scales: {
+                  xAxes: [
+                    {
+                      type: "time",
+                      time: {
+                        unit: "day",
+                        tooltipFormat: "MMM DD, YYYY",
+                        displayFormats: {
+                          day: "MMM DD, YYYY",
+                        },
+                      },
+                      ticks: {
+                        autoSkip: true,
+                        maxTicksLimit: 20,
+                      },
+                    },
+                  ],
+                },
+              },
+            });
+          }
+        };
+        xhr.send();
+        document.getElementById("loading").innerHTML = "";
+      }
+
+      function update() {
+        var x = document.getElementById("token").value;
+        x = x.toUpperCase();
+        var y = document.getElementById("days").value;
+
+        //document.getElementById("demo").innerHTML = x;
+
+        render(x, y);
+      }
+    </script>
+  </body>
+</html>
